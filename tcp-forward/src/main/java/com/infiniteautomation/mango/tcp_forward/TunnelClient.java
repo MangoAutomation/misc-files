@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Properties;
 import java.util.Set;
@@ -63,7 +65,17 @@ public class TunnelClient {
     private SshClient initClient() throws IOException, GeneralSecurityException {
         SshClient client = SshClient.setUpDefaultClient();
 
-        client.setServerKeyVerifier(new KnownHostsServerKeyVerifier(AcceptAllServerKeyVerifier.INSTANCE, Paths.get(config.getProperty("client.knownHostsFile"))));
+        Path knownHostsPath = Paths.get(config.getProperty("client.knownHostsFile"));
+        // if the server is not in known_hosts file, we accept it and add it to the file
+        // could use RejectAllServerKeyVerifier if we dont want this behavior
+        AcceptAllServerKeyVerifier delegate = AcceptAllServerKeyVerifier.INSTANCE;
+        client.setServerKeyVerifier(new KnownHostsServerKeyVerifier(delegate, knownHostsPath));
+
+        KeyPair clientPrivateKey;
+        try (InputStream is = new FileInputStream(new File(config.getProperty("client.privateKeyFile")))) {
+            clientPrivateKey = SecurityUtils.loadKeyPairIdentity("client-private-key", is, null);
+        }
+        client.setKeyPairProvider(() -> Arrays.asList(clientPrivateKey));
 
         //PropertyResolverUtils.updateProperty(client, FactoryManager.WINDOW_SIZE, 2048);
         //PropertyResolverUtils.updateProperty(client, FactoryManager.MAX_PACKET_SIZE, 256);
@@ -75,12 +87,6 @@ public class TunnelClient {
     }
 
     public void start() throws IOException, GeneralSecurityException {
-        KeyPair clientPrivateKey;
-
-        try (InputStream is = new FileInputStream(new File(config.getProperty("client.privateKeyFile")))) {
-            clientPrivateKey = SecurityUtils.loadKeyPairIdentity("client-private-key", is, null);
-        }
-
         String username = config.getProperty("server.username");
         String host = config.getProperty("server.host");
         int port = Integer.parseInt(config.getProperty("server.port"));
@@ -94,7 +100,6 @@ public class TunnelClient {
 
         while (client.isStarted()) {
             try (ClientSession session = client.connect(username, host, port).verify(10, TimeUnit.SECONDS).getSession()) {
-                session.addPublicKeyIdentity(clientPrivateKey);
                 session.auth().verify(10, TimeUnit.SECONDS);
 
                 // can use in try with resources block
