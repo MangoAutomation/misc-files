@@ -4,19 +4,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
-import java.security.KeyFactory;
 import java.security.KeyPair;
-import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
 import java.util.EnumSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.sshd.client.SshClient;
-import org.apache.sshd.client.keyverifier.RequiredServerKeyVerifier;
+import org.apache.sshd.client.keyverifier.AcceptAllServerKeyVerifier;
+import org.apache.sshd.client.keyverifier.KnownHostsServerKeyVerifier;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.client.session.ClientSession.ClientSessionEvent;
 import org.apache.sshd.client.session.forward.ExplicitPortForwardingTracker;
@@ -65,15 +63,7 @@ public class TunnelClient {
     private SshClient initClient() throws IOException, GeneralSecurityException {
         SshClient client = SshClient.setUpDefaultClient();
 
-        KeyFactory kf = SecurityUtils.getKeyFactory(config.getProperty("server.publicKeyAlgorithm"));
-
-        // base64 encoded DER X.509 certificate for server public key
-        byte[] publicKeyBytes = Base64.getDecoder().decode(config.getProperty("server.publicKey"));
-        PublicKey publicKey = kf.generatePublic(new X509EncodedKeySpec(publicKeyBytes));
-
-
-        client.setServerKeyVerifier(new RequiredServerKeyVerifier(publicKey));
-        //client.setServerKeyVerifier(AcceptAllServerKeyVerifier.INSTANCE);
+        client.setServerKeyVerifier(new KnownHostsServerKeyVerifier(AcceptAllServerKeyVerifier.INSTANCE, Paths.get(config.getProperty("client.knownHostsFile"))));
 
         //PropertyResolverUtils.updateProperty(client, FactoryManager.WINDOW_SIZE, 2048);
         //PropertyResolverUtils.updateProperty(client, FactoryManager.MAX_PACKET_SIZE, 256);
@@ -85,24 +75,26 @@ public class TunnelClient {
     }
 
     public void start() throws IOException, GeneralSecurityException {
-        KeyPair key;
+        KeyPair clientPrivateKey;
 
-        try (InputStream is = new FileInputStream(new File(config.getProperty("client.authenticationKeyLocation")))) {
-            key = SecurityUtils.loadKeyPairIdentity("my-identity", is, null);
+        try (InputStream is = new FileInputStream(new File(config.getProperty("client.privateKeyFile")))) {
+            clientPrivateKey = SecurityUtils.loadKeyPairIdentity("client-private-key", is, null);
         }
 
         String username = config.getProperty("server.username");
         String host = config.getProperty("server.host");
         int port = Integer.parseInt(config.getProperty("server.port"));
 
-        SshdSocketAddress localAddress = new SshdSocketAddress(config.getProperty("localAddress.host"), Integer.parseInt(config.getProperty("localAddress.port")));
-        SshdSocketAddress remoteAddress = new SshdSocketAddress(config.getProperty("remoteAddress.host"), Integer.parseInt(config.getProperty("remoteAddress.port")));
+        SshdSocketAddress localAddress = new SshdSocketAddress(config.getProperty("localAddress.host"),
+                Integer.parseInt(config.getProperty("localAddress.port")));
+        SshdSocketAddress remoteAddress = new SshdSocketAddress(config.getProperty("remoteAddress.host"),
+                Integer.parseInt(config.getProperty("remoteAddress.port")));
 
-        Set<ClientSessionEvent> ret;
+        Set<ClientSessionEvent> ret = null;
 
         while (client.isStarted()) {
             try (ClientSession session = client.connect(username, host, port).verify(10, TimeUnit.SECONDS).getSession()) {
-                session.addPublicKeyIdentity(key);
+                session.addPublicKeyIdentity(clientPrivateKey);
                 session.auth().verify(10, TimeUnit.SECONDS);
 
                 // can use in try with resources block
@@ -117,6 +109,12 @@ public class TunnelClient {
                 //ClientChannel channel = session.createChannel("my-type");
 
                 ret = session.waitFor(EnumSet.of(ClientSessionEvent.CLOSED, ClientSessionEvent.TIMEOUT), 0);
+            } catch (Exception e) {
+                logger.info("Connect failed", e);
+                try {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(10));
+                } catch (InterruptedException e1) {
+                }
             }
 
             logger.info("Session terminated, reason: {}", ret);

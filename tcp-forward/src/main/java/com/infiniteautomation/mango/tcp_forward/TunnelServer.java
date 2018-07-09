@@ -9,15 +9,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.util.Arrays;
 import java.util.Properties;
 
-import org.apache.sshd.common.cipher.ECCurves;
-import org.apache.sshd.common.config.keys.KeyUtils;
 import org.apache.sshd.common.util.security.SecurityUtils;
 import org.apache.sshd.server.SshServer;
-import org.apache.sshd.server.auth.pubkey.AcceptAllPublickeyAuthenticator;
+import org.apache.sshd.server.config.keys.AuthorizedKeysAuthenticator;
 import org.apache.sshd.server.forward.AcceptAllForwardingFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,10 +52,11 @@ public class TunnelServer {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final Properties config;
-    private SshServer sshd;
+    private final SshServer sshd;
 
     public TunnelServer(Properties config) throws IOException, GeneralSecurityException {
         this.config = config;
+        this.sshd = SshServer.setUpDefaultServer();
     }
 
     public void stop() {
@@ -72,14 +70,13 @@ public class TunnelServer {
     }
 
     public void start() throws IOException, GeneralSecurityException, InterruptedException {
-        KeyPair keyPair = createKeyPair();
+        KeyPair keyPair = loadKeyPair();
 
         //server.publicKeyAlgorithm=ECDSA
         //server.publicKey=
         //server.privateKey=
 
-        this.sshd = SshServer.setUpDefaultServer();
-        sshd.setHost(config.getProperty("server.host"));
+        sshd.setHost(config.getProperty("server.bind"));
         sshd.setPort(Integer.parseInt(config.getProperty("server.port")));
         //sshd.setShellFactory(new InteractiveProcessShellFactory());
 
@@ -88,7 +85,7 @@ public class TunnelServer {
 
         sshd.setKeyPairProvider(() -> Arrays.asList(keyPair));
         //sshd.setPasswordAuthenticator(BogusPasswordAuthenticator.INSTANCE);
-        sshd.setPublickeyAuthenticator(AcceptAllPublickeyAuthenticator.INSTANCE);
+        sshd.setPublickeyAuthenticator(new AuthorizedKeysAuthenticator(new File(config.getProperty("server.authorizedKeysFile"))));
 
         sshd.setForwardingFilter(AcceptAllForwardingFilter.INSTANCE);
         sshd.addPortForwardingEventListener(new LoggingPortForwardingEventListener());
@@ -96,10 +93,9 @@ public class TunnelServer {
         sshd.start();
     }
 
-    private KeyPair createKeyPair() throws GeneralSecurityException {
-        KeyPairGenerator gen = SecurityUtils.getKeyPairGenerator(KeyUtils.EC_ALGORITHM);
-        gen.initialize(ECCurves.nistp521.getParameters());
-        return gen.generateKeyPair();
+    private KeyPair loadKeyPair() throws IOException, GeneralSecurityException {
+        try (InputStream is = new FileInputStream(new File(config.getProperty("server.privateKeyFile")))) {
+            return SecurityUtils.loadKeyPairIdentity("server-private-key", is, null);
+        }
     }
-
 }
