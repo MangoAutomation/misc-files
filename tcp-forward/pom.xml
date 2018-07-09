@@ -57,44 +57,58 @@
     <plugins>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-assembly-plugin</artifactId>
+            <artifactId>maven-dependency-plugin</artifactId>
             <executions>
                 <execution>
-                    <id>tcp-forward-client</id>
-                    <phase>package</phase>
+                    <phase>prepare-package</phase>
                     <goals>
-                        <goal>single</goal>
+                        <goal>copy-dependencies</goal>
                     </goals>
                     <configuration>
-                        <archive>
-                        <manifest>
-                            <mainClass>com.infiniteautomation.mango.tcp_forward.TunnelClient</mainClass>
-                        </manifest>
-                        </archive>
-                        <descriptorRefs>
-                            <descriptorRef>jar-with-dependencies</descriptorRef>
-                        </descriptorRefs>
-                        <appendAssemblyId>false</appendAssemblyId>
-                        <finalName>tcp-forward-client-${project.version}</finalName>
+                        <outputDirectory>
+                            ${project.build.directory}/libs
+                        </outputDirectory>
                     </configuration>
                 </execution>
+            </executions>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
                 <execution>
                     <id>tcp-forward-server</id>
                     <phase>package</phase>
                     <goals>
-                        <goal>single</goal>
+                      <goal>jar</goal>
                     </goals>
                     <configuration>
+                        <classifier>server</classifier>
                         <archive>
-                        <manifest>
-                            <mainClass>com.infiniteautomation.mango.tcp_forward.TunnelServer</mainClass>
-                        </manifest>
+                            <manifest>
+                                <addClasspath>true</addClasspath>
+                                <classpathPrefix>libs/</classpathPrefix>
+                                <mainClass>com.infiniteautomation.mango.tcp_forward.TunnelServer</mainClass>
+                            </manifest>
                         </archive>
-                        <descriptorRefs>
-                            <descriptorRef>jar-with-dependencies</descriptorRef>
-                        </descriptorRefs>
-                        <appendAssemblyId>false</appendAssemblyId>
-                        <finalName>tcp-forward-server-${project.version}</finalName>
+                    </configuration>
+                </execution>
+                <execution>
+                    <id>tcp-forward-client</id>
+                    <phase>package</phase>
+                    <goals>
+                      <goal>jar</goal>
+                    </goals>
+                    <configuration>
+                        <classifier>client</classifier>
+                        <archive>
+                            <manifest>
+                                <addClasspath>true</addClasspath>
+                                <classpathPrefix>libs/</classpathPrefix>
+                                <mainClass>com.infiniteautomation.mango.tcp_forward.TunnelClient</mainClass>
+                            </manifest>
+                        </archive>
                     </configuration>
                 </execution>
             </executions>
