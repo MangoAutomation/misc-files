@@ -9,9 +9,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 
+import org.apache.sshd.common.channel.RequestHandler;
+import org.apache.sshd.common.session.ConnectionService;
 import org.apache.sshd.common.util.security.SecurityUtils;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.config.keys.AuthorizedKeysAuthenticator;
@@ -89,6 +92,12 @@ public class TunnelServer {
 
         sshd.setForwardingFilter(AcceptAllForwardingFilter.INSTANCE);
         sshd.addPortForwardingEventListener(new LoggingPortForwardingEventListener());
+
+        ArrayList<RequestHandler<ConnectionService>> handlers = new ArrayList<RequestHandler<ConnectionService>>(sshd.getGlobalRequestHandlers());
+
+        handlers.add(new InfoHandler());
+
+        sshd.setGlobalRequestHandlers(handlers);
 
         sshd.start();
     }

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
@@ -20,6 +21,8 @@ import org.apache.sshd.client.keyverifier.KnownHostsServerKeyVerifier;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.client.session.ClientSession.ClientSessionEvent;
 import org.apache.sshd.client.session.forward.ExplicitPortForwardingTracker;
+import org.apache.sshd.common.SshConstants;
+import org.apache.sshd.common.util.buffer.Buffer;
 import org.apache.sshd.common.util.net.SshdSocketAddress;
 import org.apache.sshd.common.util.security.SecurityUtils;
 import org.apache.sshd.server.forward.AcceptAllForwardingFilter;
@@ -101,6 +104,19 @@ public class TunnelClient {
         while (client.isStarted()) {
             try (ClientSession session = client.connect(username, host, port).verify(10, TimeUnit.SECONDS).getSession()) {
                 session.auth().verify(10, TimeUnit.SECONDS);
+
+                String test = "send this please";
+                byte[] testBytes = test.getBytes(StandardCharsets.UTF_8);
+
+                Buffer buffer = session.createBuffer(SshConstants.SSH_MSG_GLOBAL_REQUEST, InfoHandler.REQUEST_NAME_BYTES.length + 1 + testBytes.length);
+                buffer.putBytes(InfoHandler.REQUEST_NAME_BYTES);
+                buffer.putBoolean(true); // want reply
+                buffer.putBytes(testBytes);
+
+                Buffer result = session.request(InfoHandler.REQUEST_NAME, buffer, 10, TimeUnit.SECONDS);
+                int intResult = result.getInt();
+                logger.info("Reply is {}", intResult);
+
 
                 // can use in try with resources block
                 ExplicitPortForwardingTracker tracker = session.createRemotePortForwardingTracker(remoteAddress, localAddress);
