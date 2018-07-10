@@ -34,12 +34,7 @@ public class TunnelClient {
     public static void main(String[] args) throws Exception {
         String configPath = args.length > 1 ? args[1] : "client-config.properties";
 
-        Properties defaults = new Properties();
-        try (InputStream is = TunnelClient.class.getClassLoader().getResourceAsStream("client-config.properties")) {
-            defaults.load(is);
-        }
-
-        Properties config = new Properties(defaults);
+        Properties config = new Properties();
         File configFile = new File(configPath);
         if (configFile.exists()) {
             try (InputStream is = new FileInputStream(configFile)) {
@@ -68,14 +63,14 @@ public class TunnelClient {
     private SshClient initClient() throws IOException, GeneralSecurityException {
         SshClient client = SshClient.setUpDefaultClient();
 
-        Path knownHostsPath = Paths.get(config.getProperty("client.knownHostsFile"));
+        Path knownHostsPath = Paths.get(config.getProperty("knownHostsFile"));
         // if the server is not in known_hosts file, we accept it and add it to the file
         // could use RejectAllServerKeyVerifier if we dont want this behavior
         AcceptAllServerKeyVerifier delegate = AcceptAllServerKeyVerifier.INSTANCE;
         client.setServerKeyVerifier(new KnownHostsServerKeyVerifier(delegate, knownHostsPath));
 
         KeyPair clientPrivateKey;
-        try (InputStream is = new FileInputStream(new File(config.getProperty("client.privateKeyFile")))) {
+        try (InputStream is = new FileInputStream(new File(config.getProperty("privateKeyFile")))) {
             clientPrivateKey = SecurityUtils.loadKeyPairIdentity("client-private-key", is, null);
         }
         client.setKeyPairProvider(() -> Arrays.asList(clientPrivateKey));
@@ -90,14 +85,14 @@ public class TunnelClient {
     }
 
     public void start() throws IOException, GeneralSecurityException {
-        String username = config.getProperty("server.username");
-        String host = config.getProperty("server.host");
-        int port = Integer.parseInt(config.getProperty("server.port"));
+        String username = config.getProperty("username");
+        String host = config.getProperty("host");
+        int port = Integer.parseInt(config.getProperty("port", "2222"));
 
-        SshdSocketAddress localAddress = new SshdSocketAddress(config.getProperty("localAddress.host"),
-                Integer.parseInt(config.getProperty("localAddress.port")));
-        SshdSocketAddress remoteAddress = new SshdSocketAddress(config.getProperty("remoteAddress.host"),
-                Integer.parseInt(config.getProperty("remoteAddress.port")));
+        SshdSocketAddress localAddress = new SshdSocketAddress(config.getProperty("localAddress.host", "localhost"),
+                Integer.parseInt(config.getProperty("localAddress.port", "8080")));
+        SshdSocketAddress remoteAddress = new SshdSocketAddress(config.getProperty("remoteAddress.host", ""),
+                Integer.parseInt(config.getProperty("remoteAddress.port", "0")));
 
         Set<ClientSessionEvent> ret = null;
 

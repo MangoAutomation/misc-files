@@ -30,12 +30,7 @@ public class TunnelServer {
     public static void main(String[] args) throws Exception {
         String configPath = args.length > 1 ? args[1] : "server-config.properties";
 
-        Properties defaults = new Properties();
-        try (InputStream is = TunnelClient.class.getClassLoader().getResourceAsStream("server-config.properties")) {
-            defaults.load(is);
-        }
-
-        Properties config = new Properties(defaults);
+        Properties config = new Properties();
         File configFile = new File(configPath);
         if (configFile.exists()) {
             try (InputStream is = new FileInputStream(configFile)) {
@@ -79,8 +74,8 @@ public class TunnelServer {
         //server.publicKey=
         //server.privateKey=
 
-        sshd.setHost(config.getProperty("server.bind"));
-        sshd.setPort(Integer.parseInt(config.getProperty("server.port")));
+        sshd.setHost(config.getProperty("bind", ""));
+        sshd.setPort(Integer.parseInt(config.getProperty("port", "2222")));
         //sshd.setShellFactory(new InteractiveProcessShellFactory());
 
         //PropertyResolverUtils.updateProperty(sshd, FactoryManager.WINDOW_SIZE, 2048);
@@ -88,7 +83,7 @@ public class TunnelServer {
 
         sshd.setKeyPairProvider(() -> Arrays.asList(keyPair));
         //sshd.setPasswordAuthenticator(BogusPasswordAuthenticator.INSTANCE);
-        sshd.setPublickeyAuthenticator(new AuthorizedKeysAuthenticator(new File(config.getProperty("server.authorizedKeysFile"))));
+        sshd.setPublickeyAuthenticator(new AuthorizedKeysAuthenticator(new File(config.getProperty("authorizedKeysFile"))));
 
         sshd.setForwardingFilter(AcceptAllForwardingFilter.INSTANCE);
         sshd.addPortForwardingEventListener(new LoggingPortForwardingEventListener());
@@ -103,7 +98,7 @@ public class TunnelServer {
     }
 
     private KeyPair loadKeyPair() throws IOException, GeneralSecurityException {
-        try (InputStream is = new FileInputStream(new File(config.getProperty("server.privateKeyFile")))) {
+        try (InputStream is = new FileInputStream(new File(config.getProperty("privateKeyFile")))) {
             return SecurityUtils.loadKeyPairIdentity("server-private-key", is, null);
         }
     }
