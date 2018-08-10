@@ -2,7 +2,7 @@ FROM openjdk:8-jdk
 MAINTAINER Jared Wiltshire <jared@infiniteautomation.com>
 
 RUN mkdir -p /opt/mango \
-    && wget -O /tmp/m2m2-core.zip https://builds.mangoautomation.net/m2m2-core-3.4.zip \
+    && wget -O /tmp/m2m2-core.zip https://builds.mangoautomation.net/m2m2-core-main.zip \
     && unzip /tmp/m2m2-core.zip -d /opt/mango \
     && rm  /tmp/m2m2-core.zip
 
