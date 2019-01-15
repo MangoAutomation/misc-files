@@ -1,0 +1,21 @@
+#Run in root git repo
+
+#Core Public
+git ls-files | grep -v -e "dwr-2.0.10-custom*" -e "Core/web/resources/ace*" -e "Core/web/resources/amcharts*" -e "Core/web/resources/amd*" -e "Core/web/resources/angular*" -e "Core/web/resources/bootstrap*" -e "Core/web/resources/charting*" -e "Core/web/resources/cldr*" -e "Core/web/resources/amcharts*" -e "Core/web/resources/dgrid*" -e "Core/web/resources/dijit*" -e "Core/web/resources/dojo*" -e "Core/web/resources/dstore*" -e "Core/web/resources/fonts*" -e "Core/web/resources/globalize*" -e "Core/web/resources/jquery*" -e "Core/web/resources/xstyle*" -e "Core/web/resources/select2*" -e "Core/web/resources/put-selector*" -e "Core/dojo*" -e "Core/web/soundmanager2*" -e "Core/web/images*"| xargs wc -l
+
+#Core Private
+
+#Modules (Has spaces in module names so use sed)
+git ls-files | sed 's/ /\\ /g' | xargs wc -l
+
+#ma-dashboards
+git ls-files | sed 's/ /\\ /g' | grep -v -e "UI/web-src/vendor*" -e ".png" -e ".woff*" | xargs wc -l
+
+#dashboards
+git ls-files | sed 's/ /\\ /g' | grep -v -e ".png" -e ".jpg" -e "Templates/oru/sass*" -e "Templates/oru/js/bootstrap" -e ".woff" -e "Templates/oru/.sass*" | xargs wc -l
+
+#BACnet4J
+git ls-files | sed 's/ /\\ /g' | grep -v -e "release" | xargs wc -l
+
+Modbus4J
+git ls-files | sed 's/ /\\ /g' | xargs wc -l
