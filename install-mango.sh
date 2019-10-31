@@ -3,10 +3,16 @@
 set -e
 mango_version="$1"
 
+[ -x "$(command -v greadlink)" ] && alias readlink='greadlink'
+script_file=$(readlink -f "$0")
+script_dir=$(dirname "$script_file")
+
+echo $script_dir
+
 systemctl stop mango || true
 systemctl disable mango || true
 
-mysql -u root < ~/drop-mango.sql
+mysql -u root < "$script_dir/drop-mango.sql"
 
 rm -rf /opt/mango/*
 rm -f /opt/mango/.ma
@@ -14,7 +20,7 @@ wget -O /tmp/mango.zip https://store.infiniteautomation.com/downloads/fullCores/
 unzip /tmp/mango.zip -d /opt/mango
 rm -f /tmp/mango.zip
 
-cp ~/env.properties /opt/mango/overrides/properties/
+cp "$script_dir/env.properties" /opt/mango/overrides/properties/
 echo "ssl.keystore.password=$(openssl rand -base64 24)" >> /opt/mango/overrides/properties/env.properties
 
 get-script() {
