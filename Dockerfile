@@ -1,9 +1,10 @@
-FROM openjdk:8-jdk
+FROM adoptopenjdk:13-jdk-hotspot
 MAINTAINER Jared Wiltshire <jared@infiniteautomation.com>
 
 RUN mkdir -p /opt/mango \
-    && wget -O /tmp/m2m2-core.zip https://builds.mangoautomation.net/m2m2-core-main.zip \
-    && unzip /tmp/m2m2-core.zip -d /opt/mango \
+    && curl -so /tmp/m2m2-core.zip https://builds.mangoautomation.net/m2m2-core-main.zip \
+    && cd /opt/mango \
+    && jar xf /tmp/m2m2-core.zip \
     && rm  /tmp/m2m2-core.zip
 
 ENV MA_HOME /opt/mango
